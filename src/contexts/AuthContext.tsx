@@ -1,5 +1,6 @@
 import * as LocalAuthentication from 'expo-local-authentication';
 import { useRouter, useSegments } from 'expo-router';
+import * as SecureStore from 'expo-secure-store';
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { Alert, AppState } from 'react-native';
 import api from '../services/api';
@@ -12,12 +13,15 @@ type AuthContextValue = {
   loading: boolean;
   isSignedIn: boolean;
   isLocked: boolean;
+  isBiometricEnabled: boolean;
+  toggleBiometric: (val: boolean) => Promise<void>;
   signIn: (email: string, password: string, deviceName?: string) => Promise<void>;
   signOut: () => Promise<void>;
   biometricSignIn: () => Promise<void>;
   unlock: () => Promise<void>;
 };
 
+const BIOMETRIC_SETTING_KEY = 'biometric_enabled';
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -28,21 +32,56 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const segments = useSegments();
   const appState = useRef(AppState.currentState);
+  const [isBiometricEnabled, setIsBiometricEnabled] = useState(false);
+ 
   // Check auth state on mount (without redirecting yet)
+  useEffect(() => {
+    (async () => {
+      const savedSetting = await SecureStore.getItemAsync(BIOMETRIC_SETTING_KEY);
+      setIsBiometricEnabled(savedSetting === 'true'); // Default false jika belum ada
+      
+      const token = await TokenManager.get();
+      if (token) {
+        setIsSignedIn(true);
+        // Cek jika biometrik aktif, maka kunci layar
+        if (savedSetting === 'true') setIsLocked(true);
+      }
+      setLoading(false);
+    })();
+  }, []);
 
+  // 2. Logika Lock saat App Background/Foreground (Hanya jika biometrik aktif)
   useEffect(() => {
     const subscription = AppState.addEventListener('change', nextAppState => {
-      // Jika aplikasi kembali ke 'active' dari background
       if (appState.current.match(/inactive|background/) && nextAppState === 'active') {
-        if (isSignedIn) {
-          setIsLocked(true); // Kunci aplikasi
+        if (isSignedIn && isBiometricEnabled) { // Cek kondisi biometrik aktif
+          setIsLocked(true);
         }
       }
       appState.current = nextAppState;
     });
-
     return () => subscription.remove();
-  }, [isSignedIn]);
+  }, [isSignedIn, isBiometricEnabled]);
+
+  // 3. Fungsi untuk toggle pengaturan biometrik
+  const toggleBiometric = async (val: boolean) => {
+    setIsBiometricEnabled(val);
+    await SecureStore.setItemAsync(BIOMETRIC_SETTING_KEY, val.toString());
+  };
+
+  // useEffect(() => {
+  //   const subscription = AppState.addEventListener('change', nextAppState => {
+  //     // Jika aplikasi kembali ke 'active' dari background
+  //     if (appState.current.match(/inactive|background/) && nextAppState === 'active') {
+  //       if (isSignedIn) {
+  //         setIsLocked(true); // Kunci aplikasi
+  //       }
+  //     }
+  //     appState.current = nextAppState;
+  //   });
+
+  //   return () => subscription.remove();
+  // }, [isSignedIn]);
 
   useEffect(() => {
     (async () => {
@@ -151,7 +190,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, isSignedIn, signIn, signOut, biometricSignIn, isLocked, unlock }}>
+    <AuthContext.Provider value={{ user, loading, isSignedIn, signIn, signOut, biometricSignIn, isLocked, unlock,isBiometricEnabled, toggleBiometric }}>
       {children}
     </AuthContext.Provider>
   );

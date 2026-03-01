@@ -36,10 +36,12 @@ const insets = useSafeAreaInsets();
               {user?.name || 'User Tiara'}
             </Text>
           </View>
-          <TouchableOpacity className="bg-slate-200 p-1 rounded-full border-2 border-white shadow-sm">
-            {/* Ganti dengan URL avatar user dari API jika ada */}
-            <Ionicons name="person-circle" size={48} color="#94a3b8" />
-          </TouchableOpacity>
+        <TouchableOpacity 
+  onPress={() => router.push('/profile')} // <--- Tambahkan Navigasi ke Halaman Profile
+  className="bg-slate-200 p-1 rounded-full border-2 border-white shadow-sm"
+>
+  <Ionicons name="person-circle" size={48} color="#94a3b8" />
+</TouchableOpacity>
         </View>
 
         {/* --- 2. AI CHAT BANNER (HERO SECTION) --- */}

@@ -53,6 +53,8 @@ export default function LoginScreen() {
               <View>
                 <Text className="text-slate-700 font-semibold mb-2 ml-1">Email</Text>
                 <TextInput
+                  value={email}
+                  onChangeText={setEmail}
                   className="bg-slate-50 p-4 rounded-2xl border border-slate-200 text-slate-900 focus:border-blue-500"
                   placeholder="Masukkan email"
                   autoCapitalize="none" // <-- MATIKAN CAPS LOCK DI SINI
@@ -65,6 +67,8 @@ export default function LoginScreen() {
                 <Text className="text-slate-700 font-semibold mb-2 ml-1">Password</Text>
                 <View className="flex-row items-center bg-slate-50 rounded-2xl border border-slate-200 px-4">
                   <TextInput
+                    value={password}
+                    onChangeText={setPassword}
                     className="flex-1 py-4 text-slate-900"
                     placeholder="Masukkan password"
                     secureTextEntry={!showPassword}
