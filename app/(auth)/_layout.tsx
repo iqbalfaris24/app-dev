@@ -1,5 +1,5 @@
 import { Stack } from 'expo-router';
-
+import "../../global.css"; // Sesuaikan path-nya
 export default function AuthLayout() {
   return (
     <Stack

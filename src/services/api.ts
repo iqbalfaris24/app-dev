@@ -28,7 +28,7 @@ api.interceptors.response.use(
       originalRequest._retry = true;
       try {
         const currentToken = await TokenManager.get();
-        const refreshRes = await axios.post(`${process.env.EXPO_PUBLIC_API_URL}/api/mobile/auth/refresh-token`, {}, {
+        const refreshRes = await axios.post(`${process.env.EXPO_PUBLIC_API_URL}/auth/refresh-token`, {}, {
           headers: { Authorization: `Bearer ${currentToken}` },
         });
         const newToken = refreshRes.data?.data?.token || refreshRes.data?.token;
