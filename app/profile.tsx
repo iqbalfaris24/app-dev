@@ -25,7 +25,7 @@ export default function ProfileScreen() {
           <View className="w-24 h-24 bg-blue-100 rounded-full items-center justify-center border-4 border-white shadow-sm">
             <Ionicons name="person" size={50} color="#3b82f6" />
           </View>
-          <Text className="text-2xl font-bold text-slate-900 mt-4">{user?.name || 'User Tiara'}</Text>
+          <Text className="text-xl font-bold text-slate-900 mt-4">{user?.name || 'User Tiara'}</Text>
           <Text className="text-slate-500">{user?.email || 'email@example.com'}</Text>
         </View>
 

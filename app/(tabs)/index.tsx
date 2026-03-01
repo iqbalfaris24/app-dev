@@ -1,8 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import React from 'react';
-import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import React, { useEffect } from 'react';
+import { Alert, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 // import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import * as LocalAuthentication from 'expo-local-authentication';
+import * as SecureStore from 'expo-secure-store'; // <-- 1. Tambahkan import ini
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../../src/contexts/AuthContext';
 
@@ -10,6 +12,7 @@ export default function DashboardScreen() {
   const { user } = useAuth();
   const router = useRouter();
 const insets = useSafeAreaInsets();
+const { isBiometricEnabled, toggleBiometric } = useAuth();
   // Data dummy untuk menu fitur
   const menuFeatures = [
     { id: '1', title: 'Dokumen', icon: 'document-text', color: 'text-blue-500', bg: 'bg-blue-50' },
@@ -17,6 +20,47 @@ const insets = useSafeAreaInsets();
     { id: '3', title: 'Laporan', icon: 'bar-chart', color: 'text-green-500', bg: 'bg-green-50' },
     { id: '4', title: 'Manajemen', icon: 'people', color: 'text-purple-500', bg: 'bg-purple-50' },
   ];
+useEffect(() => {
+    const checkBiometricOffer = async () => {
+      // 2. Cek apakah user sudah pernah menekan "Nanti Saja" sebelumnya
+      const hasDismissed = await SecureStore.getItemAsync('biometric_prompt_dismissed');
+      
+      // Jika sudah pernah menolak ATAU biometrik sudah aktif, jangan munculkan lagi
+      if (hasDismissed === 'true' || isBiometricEnabled) return;
+
+      const hasHardware = await LocalAuthentication.hasHardwareAsync();
+      const isEnrolled = await LocalAuthentication.isEnrolledAsync();
+
+      if (hasHardware && isEnrolled) {
+        Alert.alert(
+          "Aktifkan Biometrik?",
+          "Ingin menggunakan sidik jari untuk masuk ke aplikasi berikutnya?",
+          [
+            { 
+              text: "Nanti Saja", 
+              style: "cancel",
+              onPress: async () => {
+                // 3. Simpan status penolakan ini agar tidak ditanya terus-menerus
+                await SecureStore.setItemAsync('biometric_prompt_dismissed', 'true');
+              }
+            },
+            { 
+              text: "Ya, Aktifkan", 
+              onPress: async () => {
+                await toggleBiometric(true);
+                // Kita juga bisa set dismissed ke true di sini sebagai pengaman ganda
+                await SecureStore.setItemAsync('biometric_prompt_dismissed', 'true');
+              }
+            }
+          ]
+        );
+      }
+    };
+
+    const timeout = setTimeout(checkBiometricOffer, 1500);
+    return () => clearTimeout(timeout);
+  }, [isBiometricEnabled]);
+
 
   return (
     <View 
