@@ -1,10 +1,10 @@
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { ActivityIndicator } from 'react-native';
 import 'react-native-reanimated';
-
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import LockScreen from '../src/components/LockScreen';
 import { AuthProvider, useAuth } from '../src/contexts/AuthContext';
 export const unstable_settings = {
@@ -34,10 +34,12 @@ export default function RootLayout() {
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <AuthProvider>
-        <RootLayoutContent />
-        <StatusBar style="auto" />
-      </AuthProvider>
+      <SafeAreaProvider>
+        <AuthProvider>
+          <RootLayoutContent />
+          <StatusBar style="auto" />
+        </AuthProvider>
+      </SafeAreaProvider>
     </ThemeProvider>
   );
 }
