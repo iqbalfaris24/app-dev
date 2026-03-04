@@ -11,6 +11,15 @@ export default function NetboxScreen() {
   const [devices, setDevices] = useState<NetboxDevice[]>([]);
   const [loading, setLoading] = useState(false);
 
+  const formatValue = (val: any) => {
+    if (val == null) return '';
+    if (typeof val === 'object') {
+      // try common properties
+      return val.display || val.name || val.slug || JSON.stringify(val);
+    }
+    return String(val);
+  };
+
   const fetchDevices = async () => {
     setLoading(true);
     try {
@@ -49,10 +58,14 @@ export default function NetboxScreen() {
             >
               <Text className="text-lg font-semibold text-slate-900">{dev.name || `#${dev.id}`}</Text>
               {dev.device_type && (
-                <Text className="text-sm text-slate-500">Type: {dev.device_type}</Text>
+                <Text className="text-sm text-slate-500">
+                  Type: {formatValue(dev.device_type)}
+                </Text>
               )}
               {dev.site && (
-                <Text className="text-sm text-slate-500">Site: {dev.site}</Text>
+                <Text className="text-sm text-slate-500">
+                  Site: {formatValue(dev.site)}
+                </Text>
               )}
             </View>
           ))}

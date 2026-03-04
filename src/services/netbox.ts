@@ -9,13 +9,13 @@ export interface NetboxDevice {
 }
 
 export const listNetboxDevices = async (page = 1, limit = 20) => {
-  const response = await api.get('/api/v1/netbox-devices', {
+  const response = await api.get('/v1/netbox-devices', {
     params: { page, limit },
   });
   return response.data;
 };
 
 export const getNetboxDevice = async (id: number) => {
-  const response = await api.get(`/api/v1/netbox-devices/${id}`);
+  const response = await api.get(`/v1/netbox-devices/${id}`);
   return response.data;
 };

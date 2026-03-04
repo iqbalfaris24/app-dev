@@ -38,14 +38,6 @@ const insets = useSafeAreaInsets();
       bg: 'bg-green-50',
       route: '/tools'
     },
-    { 
-      id: '4', 
-      title: 'API\nExplorer', 
-      icon: 'code-slash',
-      color: 'text-orange-500', 
-      bg: 'bg-orange-50',
-      route: '-explorer'
-    },
   ];
 
   useFocusEffect(
@@ -101,8 +93,8 @@ const insets = useSafeAreaInsets();
     <View 
       className="flex-1 bg-slate-50"
       style={{ 
-        paddingTop: insets.top,       // Agar tidak menabrak Notif Bar (Jam/Baterai)
-        paddingBottom: insets.bottom, // Agar tidak menabrak Home Indicator (Menu Bawah)
+        paddingTop: insets.top,       
+        paddingBottom: insets.bottom, 
       }}
     >
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
@@ -116,7 +108,7 @@ const insets = useSafeAreaInsets();
             </Text>
           </View>
         <TouchableOpacity 
-  onPress={() => router.push('/profile')} // <--- Tambahkan Navigasi ke Halaman Profile
+  onPress={() => router.push('/profile')} 
   className="bg-slate-200 p-1 rounded-full border-2 border-white shadow-sm"
 >
   <Ionicons name="person-circle" size={48} color="#94a3b8" />
@@ -126,7 +118,6 @@ const insets = useSafeAreaInsets();
         {/* --- 2. AI CHAT BANNER (HERO SECTION) --- */}
         <View className="px-6 mt-4">
           <TouchableOpacity 
-            // Nanti arahkan ke route chat AI, misalnya: router.push('/chat')
             onPress={() => console.log('Buka Chat AI')}
             className="bg-blue-600 rounded-3xl p-6 flex-row items-center justify-between shadow-lg shadow-blue-300"
           >
@@ -164,38 +155,6 @@ const insets = useSafeAreaInsets();
             ))}
           </View>
         </View>
-
-        {/* --- 4. RECENT ACTIVITY (Opsional untuk mengisi kekosongan layar) --- */}
-        {/* <View className="px-6 pb-10">
-          <View className="flex-row justify-between items-center mb-4">
-            <Text className="text-lg font-bold text-slate-800">Aktivitas Terakhir</Text>
-            <TouchableOpacity>
-              <Text className="text-blue-600 font-medium">Lihat Semua</Text>
-            </TouchableOpacity>
-          </View>
-
-          <View className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm">
-            <View className="flex-row items-center mb-3">
-              <View className="bg-slate-100 p-2 rounded-full mr-3">
-                <Ionicons name="document-text-outline" size={20} color="#64748b" />
-              </View>
-              <View>
-                <Text className="text-slate-800 font-medium">Laporan Q3 2026.pdf</Text>
-                <Text className="text-slate-400 text-xs mt-0.5">Dilihat 2 jam yang lalu</Text>
-              </View>
-            </View>
-            <View className="flex-row items-center">
-              <View className="bg-slate-100 p-2 rounded-full mr-3">
-                <Ionicons name="checkmark-circle-outline" size={20} color="#64748b" />
-              </View>
-              <View>
-                <Text className="text-slate-800 font-medium">Verifikasi Dokumen Klien</Text>
-                <Text className="text-slate-400 text-xs mt-0.5">Selesai kemarin</Text>
-              </View>
-            </View>
-          </View>
-        </View> */}
-
       </ScrollView>
     </View>
   );
