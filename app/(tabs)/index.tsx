@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
-import React, { useEffect } from 'react';
+import { useFocusEffect, useRouter } from 'expo-router';
+import React, { useCallback } from 'react';
 import { Alert, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 // import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as LocalAuthentication from 'expo-local-authentication';
@@ -9,57 +9,92 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../../src/contexts/AuthContext';
 
 export default function DashboardScreen() {
-  const { user } = useAuth();
+  const { user, isBiometricEnabled, toggleBiometric, isSignedIn } = useAuth();
   const router = useRouter();
 const insets = useSafeAreaInsets();
-const { isBiometricEnabled, toggleBiometric } = useAuth();
   // Data dummy untuk menu fitur
   const menuFeatures = [
-    { id: '1', title: 'Dokumen', icon: 'document-text', color: 'text-blue-500', bg: 'bg-blue-50' },
-    { id: '2', title: 'Jadwal', icon: 'calendar', color: 'text-orange-500', bg: 'bg-orange-50' },
-    { id: '3', title: 'Laporan', icon: 'bar-chart', color: 'text-green-500', bg: 'bg-green-50' },
-    { id: '4', title: 'Manajemen', icon: 'people', color: 'text-purple-500', bg: 'bg-purple-50' },
+    { 
+      id: '1', 
+      title: 'Servers', 
+      icon: 'server', // Ikon server database
+      color: 'text-blue-500', 
+      bg: 'bg-blue-50',
+      route: '/servers'
+    },
+    { 
+      id: '2', 
+      title: 'Netbox', 
+      icon: 'git-network', // ikon perangkat jaringan
+      color: 'text-purple-500', 
+      bg: 'bg-purple-50',
+      route: '/netbox'
+    },
+    { 
+      id: '3', 
+      title: 'Tools\nMonitoring', 
+      icon: 'pulse', // Ikon detak jantung/grafik pantauan
+      color: 'text-green-500', 
+      bg: 'bg-green-50',
+      route: '/tools'
+    },
+    { 
+      id: '4', 
+      title: 'API\nExplorer', 
+      icon: 'code-slash',
+      color: 'text-orange-500', 
+      bg: 'bg-orange-50',
+      route: '-explorer'
+    },
   ];
-useEffect(() => {
-    const checkBiometricOffer = async () => {
-      // 2. Cek apakah user sudah pernah menekan "Nanti Saja" sebelumnya
-      const hasDismissed = await SecureStore.getItemAsync('biometric_prompt_dismissed');
-      
-      // Jika sudah pernah menolak ATAU biometrik sudah aktif, jangan munculkan lagi
-      if (hasDismissed === 'true' || isBiometricEnabled) return;
 
-      const hasHardware = await LocalAuthentication.hasHardwareAsync();
-      const isEnrolled = await LocalAuthentication.isEnrolledAsync();
+  useFocusEffect(
+    useCallback(() => {
+      let isActive = true; // Indikator apakah layar ini masih terbuka
 
-      if (hasHardware && isEnrolled) {
-        Alert.alert(
-          "Aktifkan Biometrik?",
-          "Ingin menggunakan sidik jari untuk masuk ke aplikasi berikutnya?",
-          [
-            { 
-              text: "Nanti Saja", 
-              style: "cancel",
-              onPress: async () => {
-                // 3. Simpan status penolakan ini agar tidak ditanya terus-menerus
-                await SecureStore.setItemAsync('biometric_prompt_dismissed', 'true');
+      const checkBiometricOffer = async () => {
+        // PENGAMAN: Jika user belum login atau layar sudah ditinggalkan, BATALKAN POP-UP!
+        if (!isActive || !isSignedIn) return;
+
+        const hasDismissed = await SecureStore.getItemAsync('biometric_prompt_dismissed');
+        if (hasDismissed === 'true' || isBiometricEnabled) return;
+
+        const hasHardware = await LocalAuthentication.hasHardwareAsync();
+        const isEnrolled = await LocalAuthentication.isEnrolledAsync();
+
+        if (hasHardware && isEnrolled) {
+          Alert.alert(
+            "Aktifkan Biometrik?",
+            "Ingin menggunakan sidik jari untuk masuk ke aplikasi berikutnya?",
+            [
+              { 
+                text: "Nanti Saja", 
+                style: "cancel",
+                onPress: async () => {
+                  await SecureStore.setItemAsync('biometric_prompt_dismissed', 'true');
+                }
+              },
+              { 
+                text: "Ya, Aktifkan", 
+                onPress: async () => {
+                  await toggleBiometric(true);
+                  await SecureStore.setItemAsync('biometric_prompt_dismissed', 'true');
+                }
               }
-            },
-            { 
-              text: "Ya, Aktifkan", 
-              onPress: async () => {
-                await toggleBiometric(true);
-                // Kita juga bisa set dismissed ke true di sini sebagai pengaman ganda
-                await SecureStore.setItemAsync('biometric_prompt_dismissed', 'true');
-              }
-            }
-          ]
-        );
-      }
-    };
+            ]
+          );
+        }
+      };
 
-    const timeout = setTimeout(checkBiometricOffer, 1500);
-    return () => clearTimeout(timeout);
-  }, [isBiometricEnabled]);
+      const timeout = setTimeout(checkBiometricOffer, 1500);
+
+      // Fungsi pembersih ini dipanggil otomatis saat user pindah halaman / layar tertutup
+      return () => {
+        isActive = false; 
+        clearTimeout(timeout); 
+      };
+    }, [isBiometricEnabled, isSignedIn])
+  );
 
 
   return (
@@ -118,6 +153,7 @@ useEffect(() => {
             {menuFeatures.map((menu) => (
               <TouchableOpacity 
                 key={menu.id}
+                onPress={() => router.push(menu.route as any)}
                 className="w-[48%] bg-white p-5 rounded-3xl mb-4 shadow-sm border border-slate-100 items-center justify-center"
               >
                 <View className={`${menu.bg} w-14 h-14 rounded-2xl items-center justify-center mb-3`}>
@@ -130,7 +166,7 @@ useEffect(() => {
         </View>
 
         {/* --- 4. RECENT ACTIVITY (Opsional untuk mengisi kekosongan layar) --- */}
-        <View className="px-6 pb-10">
+        {/* <View className="px-6 pb-10">
           <View className="flex-row justify-between items-center mb-4">
             <Text className="text-lg font-bold text-slate-800">Aktivitas Terakhir</Text>
             <TouchableOpacity>
@@ -158,7 +194,7 @@ useEffect(() => {
               </View>
             </View>
           </View>
-        </View>
+        </View> */}
 
       </ScrollView>
     </View>
