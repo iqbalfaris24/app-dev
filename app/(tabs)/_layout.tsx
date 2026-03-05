@@ -4,91 +4,49 @@ import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
 import React, { useEffect, useRef } from 'react';
 import { Animated, Platform, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context'; // <-- IMPORT INI
 
 // --- KOMPONEN CUSTOM UNTUK ANIMASI ICON & TEKS ---
 const AnimatedTabIcon = ({ focused, color, title, iconActive, iconInactive }: any) => {
-  // Nilai animasi dasar (0 saat tidak aktif, 1 saat aktif)
   const animation = useRef(new Animated.Value(focused ? 1 : 0)).current;
 
   useEffect(() => {
     Animated.spring(animation, {
       toValue: focused ? 1 : 0,
       useNativeDriver: true,
-      tension: 60,   // Kecepatan pegas
-      friction: 8,   // Pantulan (bounce)
+      tension: 60,   
+      friction: 8,   
     }).start();
   }, [focused]);
 
-  // 1. Ikon turun ke tengah saat aktif
-  const translateY = animation.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, 10] 
-  });
-
-  // 2. Ikon sedikit membesar saat aktif
-  const scale = animation.interpolate({
-    inputRange: [0, 1],
-    outputRange: [1, 1.15]
-  });
-
-  // 3. Teks memudar secara perlahan
-  const textOpacity = animation.interpolate({
-    inputRange: [0, 1],
-    outputRange: [1, 0]
-  });
-
-  // 4. Teks ikut turun ke bawah hingga menghilang
-  const textTranslateY = animation.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, 10]
-  });
-
-  // 5. Titik glow membesar dari 0 ke ukuran asli
-  const dotScale = animation.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, 1]
-  });
+  const translateY = animation.interpolate({ inputRange: [0, 1], outputRange: [0, 10] });
+  const scale = animation.interpolate({ inputRange: [0, 1], outputRange: [1, 1.15] });
+  const textOpacity = animation.interpolate({ inputRange: [0, 1], outputRange: [1, 0] });
+  const textTranslateY = animation.interpolate({ inputRange: [0, 1], outputRange: [0, 10] });
+  const dotScale = animation.interpolate({ inputRange: [0, 1], outputRange: [0, 1] });
 
   return (
     <View style={{ 
       alignItems: 'center', 
       justifyContent: 'center', 
-      width: 70,       // Lebar area sentuh diperbesar agar tidak memotong ikon
-      height: 52,      // Tinggi statis agar proporsional
+      width: 70,       
+      height: 52,      
       marginTop: Platform.OS === 'ios' ? 14 : 0 
     }}>
-      {/* Container Icon & Titik */}
       <Animated.View style={{ transform: [{ translateY }, { scale }], alignItems: 'center', zIndex: 2 }}>
         <Ionicons name={focused ? iconActive : iconInactive} size={24} color={color} />
         
-        {/* Titik Indikator Glow */}
         <Animated.View style={{
-          marginTop: 4,
-          width: 6,
-          height: 6,
-          borderRadius: 3,
-          backgroundColor: color,
-          opacity: animation, // Ikut memudar
-          transform: [{ scale: dotScale }], // Ikut membesar
-          shadowColor: color,
-          shadowOffset: { width: 0, height: 0 },
-          shadowOpacity: 0.8,
-          shadowRadius: 6,
-          elevation: 4,
+          marginTop: 4, width: 6, height: 6, borderRadius: 3, backgroundColor: color,
+          opacity: animation, transform: [{ scale: dotScale }],
+          shadowColor: color, shadowOffset: { width: 0, height: 0 },
+          shadowOpacity: 0.8, shadowRadius: 6, elevation: 4,
         }} />
       </Animated.View>
 
-      {/* Container Teks */}
       <Animated.Text style={{ 
-        position: 'absolute',
-        bottom: 0, // Posisi aman agar tidak menabrak padding atas
-        color: color, 
-        fontSize: 10, 
-        fontWeight: '600',
-        letterSpacing: 0.3,
-        opacity: textOpacity,
-        transform: [{ translateY: textTranslateY }],
-        zIndex: 1
+        position: 'absolute', bottom: 0, color: color, fontSize: 10, fontWeight: '600',
+        letterSpacing: 0.3, opacity: textOpacity, transform: [{ translateY: textTranslateY }], zIndex: 1
       }}>
         {title}
       </Animated.Text>
@@ -99,6 +57,7 @@ const AnimatedTabIcon = ({ focused, color, title, iconActive, iconInactive }: an
 export default function TabLayout() {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
+  const insets = useSafeAreaInsets(); // <-- AMBIL DATA AREA AMAN HP (NAVIGASI BAWAH)
 
   return (
     <Tabs
@@ -107,13 +66,20 @@ export default function TabLayout() {
         tabBarButton: HapticTab,
         tabBarShowLabel: false, 
         tabBarActiveTintColor: isDark ? '#38bdf8' : '#2563eb', 
-        tabBarInactiveTintColor: isDark ? '#64748b' : '#94a3b8',
+        tabBarInactiveTintColor: isDark ? '#64748b' : '#94a3b8', 
+        
+        // --- FIX KEYBOARD MENUTUPI CHAT ---
+        tabBarHideOnKeyboard: true, // Sembunyikan tab bar otomatis saat ngetik!
+        
         tabBarStyle: {
           backgroundColor: isDark ? '#020617' : '#f8fafc', 
           borderTopWidth: 0, 
           elevation: 0,      
-          shadowOpacity: 0, 
-          height: Platform.OS === 'ios' ? 88 : 64, 
+          shadowOpacity: 0,  
+          // --- FIX TAB BAR TERTIMPA NAVIGASI SISTEM ---
+          // Tinggi dasar (64) ditambah ketebalan navigasi bawaan HP (insets.bottom)
+          // height: 64 + insets.bottom, 
+          paddingBottom: insets.bottom, // Padding di bawah agar ikon tidak nabrak tombol Home HP
         },
       }}>
       
@@ -123,13 +89,7 @@ export default function TabLayout() {
         options={{
           title: 'Home',
           tabBarIcon: ({ color, focused }) => (
-            <AnimatedTabIcon 
-              focused={focused} 
-              color={color} 
-              title="Home"
-              iconActive="home"
-              iconInactive="home-outline"
-            />
+            <AnimatedTabIcon focused={focused} color={color} title="Home" iconActive="home" iconInactive="home-outline" />
           ),
         }}
       />
@@ -140,13 +100,7 @@ export default function TabLayout() {
         options={{
           title: 'Tiara AI',
           tabBarIcon: ({ color, focused }) => (
-            <AnimatedTabIcon 
-              focused={focused} 
-              color={color} 
-              title="Tiara AI"
-              iconActive="sparkles"
-              iconInactive="sparkles-outline"
-            />
+            <AnimatedTabIcon focused={focused} color={color} title="Tiara AI" iconActive="sparkles" iconInactive="sparkles-outline" />
           ),
         }}
       />

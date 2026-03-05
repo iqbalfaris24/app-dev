@@ -1,17 +1,18 @@
 import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useRef, useState } from 'react';
 import {
-    ActivityIndicator,
-    KeyboardAvoidingView,
-    NativeScrollEvent,
-    NativeSyntheticEvent,
-    Platform,
-    ScrollView,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    useColorScheme,
-    View
+  ActivityIndicator,
+  Keyboard,
+  KeyboardAvoidingView,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
+  Platform,
+  ScrollView,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  useColorScheme,
+  View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getChatHistory, Message, sendMessage } from '../../src/services/chat';
@@ -181,27 +182,47 @@ export default function ChatScreen() {
     }, 200);
   }, [messages]);
 
-  return (
+  const [isKeyboardVisible, setKeyboardVisible] = useState(false);
+
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+
+    const showListener = Keyboard.addListener(showEvent, () => setKeyboardVisible(true));
+    const hideListener = Keyboard.addListener(hideEvent, () => setKeyboardVisible(false));
+
+    return () => {
+      showListener.remove();
+      hideListener.remove();
+    };
+  }, []);
+
+return (
+    // 1. KEYBOARD AVOIDING VIEW SEBAGAI ROOT (ELEMEN PALING LUAR)
+    // Ini sangat penting agar iOS dan Android bisa mengkalkulasi sisa layar dengan 100% akurat
     <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined} 
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0} 
-      className="flex-1 bg-slate-50 dark:bg-slate-950" // <-- Background Adaptif
-      style={{ paddingTop: insets.top }}
+      style={{ flex: 1, backgroundColor: isDark ? '#020617' : '#f8fafc' }}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={0} 
     >
-      {/* HEADER */}
-      <View className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-6 py-4 flex-row items-center justify-between shadow-sm z-10">
+      {/* 2. HEADER: Area aman (insets.top) langsung disuntikkan di sini */}
+      <View 
+        className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-6 pb-4 flex-row items-center justify-between shadow-sm z-10"
+        style={{ paddingTop: insets.top + 16 }} 
+      >
         <View className="flex-row items-center">
           <View className="bg-blue-600 p-2 rounded-2xl mr-3 shadow-sm shadow-blue-500/50">
             <Ionicons name="sparkles" size={22} color="#ffffff" />
           </View>
           <View>
-            <Text className="text-slate-900 dark:text-white text-lg font-extrabold tracking-tight">Assistant Tiara</Text>
+            <Text className="text-slate-900 dark:text-white text-lg font-extrabold tracking-tight">Tiara AI</Text>
+            <Text className="text-slate-500 dark:text-slate-400 text-xs font-medium">Server Knowledge Assistant</Text>
           </View>
         </View>
         <View className="w-2.5 h-2.5 bg-green-500 rounded-full shadow-sm" />
       </View>
 
-      {/* CHAT AREA */}
+      {/* 3. CHAT AREA */}
       <View className="flex-1 relative">
         <ScrollView
           ref={scrollViewRef}
@@ -210,6 +231,7 @@ export default function ChatScreen() {
           contentContainerStyle={{ paddingBottom: 20 }}
           onScroll={handleScroll}
           scrollEventThrottle={16}
+          keyboardShouldPersistTaps="handled" // Agar ketukan di luar form menutup keyboard
         >
           {initialLoading ? (
             <View className="flex-1 items-center justify-center py-20">
@@ -222,9 +244,7 @@ export default function ChatScreen() {
                 <View className="bg-blue-50 dark:bg-blue-500/10 p-4 rounded-full mb-4">
                   <Ionicons name="sparkles" size={40} color={isDark ? "#60a5fa" : "#3b82f6"} />
                 </View>
-                <Text className="text-slate-900 dark:text-white text-center text-xl font-bold">
-                  Halo! Saya Tiara AI
-                </Text>
+                <Text className="text-slate-900 dark:text-white text-center text-xl font-bold">Halo! Saya Tiara AI</Text>
                 <Text className="text-slate-500 dark:text-slate-400 text-center text-sm mt-2 leading-relaxed">
                   Asisten pintar Anda siap membantu. Tanyakan seputar server, infrastruktur, atau laporan harian.
                 </Text>
@@ -235,33 +255,30 @@ export default function ChatScreen() {
               msg.type === 'user' ? (
                 // BUBBLE USER
                 <View key={idx} className="mb-6 flex-row justify-end pl-12">
-                <View className="bg-blue-600 px-4 py-3 rounded-t-2xl rounded-bl-2xl rounded-br-none shadow-sm">
-                  <Text className="text-white text-base leading-relaxed">{msg.content}</Text>
-                  <Text className="text-blue-200 text-[10px] mt-1 text-right">{msg.timestamp}</Text>
-                </View>
-              </View>
-              ) : (
-                // BUBBLE AI
-              <View key={idx} className="mb-8 flex-row justify-start pr-4">
-                {/* Icon Avatar AI */}
-                <View className="mr-3 mt-1">
-                  <View className="bg-blue-100 dark:bg-blue-500/20 p-2 rounded-full">
-                    <Ionicons name="sparkles" size={16} color={isDark ? "#60a5fa" : "#3b82f6"} />
+                  <View className="bg-blue-600 px-4 py-3 rounded-t-2xl rounded-bl-2xl rounded-br-none shadow-sm">
+                    <Text className="text-white text-base leading-relaxed">{msg.content}</Text>
+                    <Text className="text-blue-200 text-[10px] mt-1 text-right">{msg.timestamp}</Text>
                   </View>
                 </View>
-                {/* Konten Teks AI Langsung Menyatu dengan Background */}
-                <View className="flex-1">
-                  <RenderMarkdownText text={msg.content} />
-                  <Text className="text-slate-400 dark:text-slate-500 text-[10px] mt-1">{msg.timestamp}</Text>
+              ) : (
+                // BUBBLE AI
+                <View key={idx} className="mb-8 flex-row justify-start pr-4">
+                  <View className="mr-3 mt-1">
+                    <View className="bg-blue-100 dark:bg-blue-500/20 p-2 rounded-full">
+                      <Ionicons name="sparkles" size={16} color={isDark ? "#60a5fa" : "#3b82f6"} />
+                    </View>
+                  </View>
+                  <View className="flex-1">
+                    <RenderMarkdownText text={msg.content} />
+                    <Text className="text-slate-400 dark:text-slate-500 text-[10px] mt-1">{msg.timestamp}</Text>
+                  </View>
                 </View>
-              </View>
               )
             ))
           )}
 
-          {/* LOADING ANIMATION */}
           {loading && (
-           <View className="mb-8 flex-row justify-start pr-6">
+            <View className="mb-8 flex-row justify-start pr-6">
               <View className="mr-3 mt-1">
                 <View className="bg-blue-100 dark:bg-blue-500/20 p-2 rounded-full">
                   <Ionicons name="sparkles" size={16} color={isDark ? "#60a5fa" : "#3b82f6"} />
@@ -276,7 +293,6 @@ export default function ChatScreen() {
           )}
         </ScrollView>
 
-        {/* TOMBOL SCROLL TO BOTTOM */}
         {showScrollButton && (
           <TouchableOpacity
             onPress={scrollToBottom}
@@ -287,14 +303,14 @@ export default function ChatScreen() {
         )}
       </View>
 
-      {/* INPUT AREA */}
-   {/* INPUT AREA */}
+      {/* 4. INPUT AREA */}
       <View 
-        className="px-4 py-3 border-t border-slate-200 dark:border-slate-800"
-        style={{ paddingBottom: insets.bottom > 0 ? insets.bottom : 16 }}
+        className="bg-white dark:bg-slate-900 px-4 py-3 border-t border-slate-200 dark:border-slate-800"
+        // Gunakan margin aman statis untuk iOS saat tidak mengetik, 
+        // saat ngetik (isKeyboardVisible), ubah ke 12px agar menempel persis di atas keyboard.
+        style={{ paddingBottom: isKeyboardVisible ? 12 : (Platform.OS === 'ios' ? insets.bottom + 12 : 16) }}
       >
         <View className="flex-row items-end bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-3xl px-4 py-2">
-          
           <TextInput
             value={inputText}
             onChangeText={setInputText}
@@ -306,15 +322,12 @@ export default function ChatScreen() {
             editable={!loading}
           />
           
-          {/* TOMBOL SEND DENGAN STYLE MURNI */}
           <View className="ml-3 mb-1">
             <TouchableOpacity
               onPress={handleSendMessage}
               disabled={loading || !inputText.trim()}
               style={{
-                backgroundColor: (loading || !inputText.trim()) 
-                  ? (isDark ? '#1e293b' : '#cbd5e1') 
-                  : '#2563eb',
+                backgroundColor: (loading || !inputText.trim()) ? (isDark ? '#1e293b' : '#cbd5e1') : '#2563eb',
                 padding: 10,
                 borderRadius: 999,
                 alignItems: 'center',
@@ -338,9 +351,9 @@ export default function ChatScreen() {
               )}
             </TouchableOpacity>
           </View>
-
         </View>
       </View>
+
     </KeyboardAvoidingView>
   );
 }

@@ -22,6 +22,7 @@ const menuFeatures = [
       id: '1', 
       title: 'Server', 
       icon: 'server', 
+      route: '/servers',
       lightColor: '#3b82f6', // blue-500
       darkColor: '#60a5fa',  // blue-400 (Lebih terang/menyala)
       bgBox: 'bg-blue-50 dark:bg-blue-900/30', 
@@ -29,8 +30,9 @@ const menuFeatures = [
     },
     { 
       id: '2', 
-      title: 'Knowledge\nBase', 
+      title: 'Knowledge\nBase',
       icon: 'library', 
+      route: '/tools',
       lightColor: '#f97316', // orange-500
       darkColor: '#fb923c',  // orange-400
       bgBox: 'bg-orange-50 dark:bg-orange-900/30', 
@@ -40,6 +42,7 @@ const menuFeatures = [
       id: '3', 
       title: 'Tools\nEngine', 
       icon: 'construct', 
+      route: '/tools',
       lightColor: '#10b981', // emerald-500
       darkColor: '#34d399',  // emerald-400
       bgBox: 'bg-emerald-50 dark:bg-emerald-900/30', 
@@ -49,6 +52,7 @@ const menuFeatures = [
       id: '4', 
       title: 'Tools\nMonitoring', 
       icon: 'pulse', 
+      route: '/tools',
       lightColor: '#8b5cf6', // violet-500
       darkColor: '#a78bfa',  // violet-400
       bgBox: 'bg-violet-50 dark:bg-violet-900/30', 
@@ -147,6 +151,7 @@ const menuFeatures = [
             {menuFeatures.map((menu) => (
               <TouchableOpacity 
                 key={menu.id}
+                 onPress={() => router.push(menu.route as any)}
                 className="w-[48%] bg-white dark:bg-slate-900 p-4 rounded-3xl mb-4 shadow-sm border border-slate-100 dark:border-slate-800 items-center justify-center"
               >
                 {/* Kotak Ikon dengan efek Border Glow di Dark Mode */}
