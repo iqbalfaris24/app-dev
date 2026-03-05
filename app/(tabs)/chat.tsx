@@ -10,58 +10,100 @@ import {
     Text,
     TextInput,
     TouchableOpacity,
-    View,
+    useColorScheme,
+    View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getChatHistory, Message, sendMessage } from '../../src/services/chat';
 
-// Simple markdown parser for AI responses
-const parseMarkdown = (text: string) => {
-  // Replace **bold** with bold styling
-  const parts: (string | { type: 'bold'; content: string })[] = [];
-  let lastIndex = 0;
-  const regex = /\*\*(.*?)\*\*/g;
-  let match;
-
-  while ((match = regex.exec(text)) !== null) {
-    if (match.index > lastIndex) {
-      parts.push(text.slice(lastIndex, match.index));
-    }
-    parts.push({ type: 'bold', content: match[1] });
-    lastIndex = regex.lastIndex;
-  }
-
-  if (lastIndex < text.length) {
-    parts.push(text.slice(lastIndex));
-  }
-
-  return parts.length > 0 ? parts : text;
-};
-
+// Simple markdown parser untuk respons AI
 const RenderMarkdownText = ({ text }: { text: string | any }) => {
-  const parsed = parseMarkdown(text);
+  if (!text) return null;
 
-  if (typeof parsed === 'string') {
-    return <Text className="text-blue-100 text-base leading-relaxed">{parsed}</Text>;
-  }
+  const lines = text.split('\n');
 
   return (
-    <Text className="text-blue-100 text-base leading-relaxed">
-      {(parsed as any[]).map((part, idx) =>
-        typeof part === 'string' ? (
-          <Text key={idx}>{part}</Text>
-        ) : (
-          <Text key={idx} className="font-semibold text-white">
-            {part.content}
+    <View className="flex-col">
+      {lines.map((line: string, lineIdx: number) => {
+        // Jeda / spasi untuk baris kosong
+        if (line.trim() === '') return <View key={lineIdx} className="h-2" />;
+
+        // Deteksi List / Bullet
+        const isListItem = /^(\*|\-)\s+(.*)/.test(line);
+        const isNumberedList = /^(\d+\.)\s+(.*)/.test(line);
+
+        let contentText = line;
+        let bulletSymbol = '';
+
+        if (isListItem) {
+          bulletSymbol = '•';
+          contentText = line.replace(/^(\*|\-)\s+/, '');
+        } else if (isNumberedList) {
+          const match = line.match(/^(\d+\.)\s+/);
+          bulletSymbol = match ? match[1] : '';
+          contentText = line.replace(/^(\d+\.)\s+/, '');
+        }
+
+        // Parsing teks tebal (Bold)
+        const parts: any[] = [];
+        let lastIndex = 0;
+        const regex = /\*\*(.*?)\*\*/g;
+        let match;
+
+        while ((match = regex.exec(contentText)) !== null) {
+          if (match.index > lastIndex) {
+            parts.push(contentText.slice(lastIndex, match.index));
+          }
+          parts.push({ type: 'bold', content: match[1] });
+          lastIndex = regex.lastIndex;
+        }
+        if (lastIndex < contentText.length) {
+          parts.push(contentText.slice(lastIndex));
+        }
+
+        // Fungsi render gabungan teks (normal + tebal)
+        const renderTextParts = () => (
+          parts.map((part, pIdx) =>
+            typeof part === 'string' ? (
+              <Text key={pIdx}>{part}</Text>
+            ) : (
+              <Text key={pIdx} className="font-bold text-slate-900 dark:text-white">
+                {part.content}
+              </Text>
+            )
+          )
+        );
+
+        // Jika List: Buat format menjorok ke dalam (Flex Row)
+        if (isListItem || isNumberedList) {
+          return (
+            <View key={lineIdx} className="flex-row pl-1 mb-1.5 pr-2">
+              <Text className="text-slate-800 dark:text-slate-200 mr-2 font-bold text-base w-4">
+                {bulletSymbol}
+              </Text>
+              <Text className="flex-1 text-slate-800 dark:text-slate-200 text-base leading-relaxed">
+                {renderTextParts()}
+              </Text>
+            </View>
+          );
+        }
+
+        // Jika Teks Paragraf Biasa
+        return (
+          <Text key={lineIdx} className="text-slate-800 dark:text-slate-200 text-base leading-relaxed mb-1.5">
+            {renderTextParts()}
           </Text>
-        )
-      )}
-    </Text>
+        );
+      })}
+    </View>
   );
 };
 
 export default function ChatScreen() {
   const insets = useSafeAreaInsets();
+  const colorScheme = useColorScheme(); // Deteksi Light/Dark mode otomatis
+  const isDark = colorScheme === 'dark';
+
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState('');
   const [loading, setLoading] = useState(false);
@@ -83,11 +125,8 @@ export default function ChatScreen() {
 
   const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const { contentOffset, layoutMeasurement, contentSize } = event.nativeEvent;
-    const paddingToBottom = 100; // Show button if scroll is more than 100px from bottom
-    
-    const isScrolledUp =
-      layoutMeasurement.height + contentOffset.y < contentSize.height - paddingToBottom;
-    
+    const paddingToBottom = 100;
+    const isScrolledUp = layoutMeasurement.height + contentOffset.y < contentSize.height - paddingToBottom;
     setShowScrollButton(isScrolledUp);
   };
 
@@ -110,7 +149,7 @@ export default function ChatScreen() {
     setLoading(true);
 
     try {
-      const response = await sendMessage(inputText);
+      const response = await sendMessage(userMessage.content);
       const aiMessage: Message = {
         type: 'assistant',
         content: response.reply,
@@ -126,11 +165,10 @@ export default function ChatScreen() {
       setMessages((prev) => [...prev, errorMsg]);
     } finally {
       setLoading(false);
+      setTimeout(() => {
+        scrollViewRef.current?.scrollToEnd({ animated: true });
+      }, 100);
     }
-
-    setTimeout(() => {
-      scrollViewRef.current?.scrollToEnd({ animated: true });
-    }, 100);
   };
 
   useEffect(() => {
@@ -145,28 +183,25 @@ export default function ChatScreen() {
 
   return (
     <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      className="flex-1 bg-gradient-to-b from-slate-900 via-blue-900 to-slate-900"
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined} 
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0} 
+      className="flex-1 bg-slate-50 dark:bg-slate-950" // <-- Background Adaptif
       style={{ paddingTop: insets.top }}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
     >
-      {/* Header dengan Gradient */}
-      <View className="bg-gradient-to-r from-blue-600 to-purple-600 px-6 py-5 shadow-lg">
-        <View className="flex-row items-center justify-between">
-          <View className="flex-row items-center">
-            <View className="bg-white/20 p-2 rounded-full mr-3">
-              <Ionicons name="sparkles" size={24} color="#ffffff" />
-            </View>
-            <View>
-              <Text className="text-white text-xl font-bold">Tiara AI</Text>
-              <Text className="text-blue-100 text-xs">Asisten cerdas Anda</Text>
-            </View>
+      {/* HEADER */}
+      <View className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-6 py-4 flex-row items-center justify-between shadow-sm z-10">
+        <View className="flex-row items-center">
+          <View className="bg-blue-600 p-2 rounded-2xl mr-3 shadow-sm shadow-blue-500/50">
+            <Ionicons name="sparkles" size={22} color="#ffffff" />
           </View>
-          <View className="w-2 h-2 bg-green-400 rounded-full shadow-glow" />
+          <View>
+            <Text className="text-slate-900 dark:text-white text-lg font-extrabold tracking-tight">Assistant Tiara</Text>
+          </View>
         </View>
+        <View className="w-2.5 h-2.5 bg-green-500 rounded-full shadow-sm" />
       </View>
 
-      {/* Chat Messages Container */}
+      {/* CHAT AREA */}
       <View className="flex-1 relative">
         <ScrollView
           ref={scrollViewRef}
@@ -178,108 +213,133 @@ export default function ChatScreen() {
         >
           {initialLoading ? (
             <View className="flex-1 items-center justify-center py-20">
-              <ActivityIndicator size="large" color="#93c5fd" />
-              <Text className="text-blue-300 text-center mt-4">Memuat chat history...</Text>
+              <ActivityIndicator size="large" color={isDark ? "#60a5fa" : "#3b82f6"} />
+              <Text className="text-slate-500 dark:text-slate-400 text-center mt-4 font-medium">Memuat riwayat chat...</Text>
             </View>
           ) : messages.length === 0 ? (
-            <View className="flex-1 items-center justify-center py-32">
-              <View className="bg-white/5 p-8 rounded-3xl border border-blue-500/30 backdrop-blur-md">
-                <Ionicons name="sparkles" size={48} color="#60a5fa" />
-                <Text className="text-white text-center text-lg font-semibold mt-4">
+            <View className="flex-1 items-center justify-center py-32 px-6">
+              <View className="bg-white dark:bg-slate-900 p-8 rounded-[32px] border border-slate-200 dark:border-slate-800 items-center shadow-lg shadow-slate-200/50 dark:shadow-none">
+                <View className="bg-blue-50 dark:bg-blue-500/10 p-4 rounded-full mb-4">
+                  <Ionicons name="sparkles" size={40} color={isDark ? "#60a5fa" : "#3b82f6"} />
+                </View>
+                <Text className="text-slate-900 dark:text-white text-center text-xl font-bold">
                   Halo! Saya Tiara AI
                 </Text>
-                <Text className="text-blue-200 text-center text-sm mt-2 px-2">
-                  Mulai percakapan dengan menanyakan apapun tentang server Anda
+                <Text className="text-slate-500 dark:text-slate-400 text-center text-sm mt-2 leading-relaxed">
+                  Asisten pintar Anda siap membantu. Tanyakan seputar server, infrastruktur, atau laporan harian.
                 </Text>
               </View>
             </View>
           ) : (
             messages.map((msg, idx) => (
               msg.type === 'user' ? (
-                // USER MESSAGE - WITH BUBBLE
-                <View key={idx} className="mb-4 flex-row justify-end">
-                  <View className="mr-2 max-w-xs bg-gradient-to-r from-blue-600 to-blue-500 rounded-3xl rounded-br-none px-4 py-3 shadow-lg">
-                    <Text className="text-white text-base leading-relaxed">
-                      {msg.content}
-                    </Text>
-                    <Text className="text-blue-100 text-xs mt-1">
-                      {msg.timestamp}
-                    </Text>
-                  </View>
+                // BUBBLE USER
+                <View key={idx} className="mb-6 flex-row justify-end pl-12">
+                <View className="bg-blue-600 px-4 py-3 rounded-t-2xl rounded-bl-2xl rounded-br-none shadow-sm">
+                  <Text className="text-white text-base leading-relaxed">{msg.content}</Text>
+                  <Text className="text-blue-200 text-[10px] mt-1 text-right">{msg.timestamp}</Text>
                 </View>
+              </View>
               ) : (
-                // AI MESSAGE - NO BUBBLE, JUST TEXT WITH MARKDOWN
-                <View key={idx} className="mb-4 flex-row justify-start">
-                  <View className="flex-1 pl-1">
-                    <RenderMarkdownText text={msg.content} />
-                    <Text className="text-blue-300 text-xs mt-2">
-                      {msg.timestamp}
-                    </Text>
+                // BUBBLE AI
+              <View key={idx} className="mb-8 flex-row justify-start pr-4">
+                {/* Icon Avatar AI */}
+                <View className="mr-3 mt-1">
+                  <View className="bg-blue-100 dark:bg-blue-500/20 p-2 rounded-full">
+                    <Ionicons name="sparkles" size={16} color={isDark ? "#60a5fa" : "#3b82f6"} />
                   </View>
                 </View>
+                {/* Konten Teks AI Langsung Menyatu dengan Background */}
+                <View className="flex-1">
+                  <RenderMarkdownText text={msg.content} />
+                  <Text className="text-slate-400 dark:text-slate-500 text-[10px] mt-1">{msg.timestamp}</Text>
+                </View>
+              </View>
               )
             ))
           )}
+
+          {/* LOADING ANIMATION */}
           {loading && (
-            <View className="mb-4 flex-row justify-start">
-              <View className="flex-1 pl-1">
-                <View className="flex-row items-center space-x-2">
-                  <View className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" />
-                  <View className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }} />
-                  <View className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
+           <View className="mb-8 flex-row justify-start pr-6">
+              <View className="mr-3 mt-1">
+                <View className="bg-blue-100 dark:bg-blue-500/20 p-2 rounded-full">
+                  <Ionicons name="sparkles" size={16} color={isDark ? "#60a5fa" : "#3b82f6"} />
                 </View>
+              </View>
+              <View className="flex-row items-center space-x-2 h-8 mt-2">
+                <View className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" />
+                <View className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }} />
+                <View className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
               </View>
             </View>
           )}
         </ScrollView>
 
-        {/* Floating Scroll to Bottom Button */}
+        {/* TOMBOL SCROLL TO BOTTOM */}
         {showScrollButton && (
           <TouchableOpacity
             onPress={scrollToBottom}
-            className="absolute bottom-4 right-4 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full p-3 shadow-lg"
+            className="absolute bottom-4 right-4 bg-white dark:bg-slate-800 rounded-full p-3 shadow-lg border border-slate-200 dark:border-slate-700"
           >
-            <Ionicons name="arrow-down" size={20} color="#ffffff" />
+            <Ionicons name="arrow-down" size={20} color={isDark ? "#ffffff" : "#0f172a"} />
           </TouchableOpacity>
         )}
       </View>
 
-      {/* Input Area */}
-      <View className="bg-gradient-to-t from-slate-900 to-slate-800/80 px-4 py-4" style={{ paddingBottom: insets.bottom + 12 }}>
-        <View className="flex-row items-center bg-white/10 border border-blue-400/40 rounded-full px-4 py-3 backdrop-blur-md">
+      {/* INPUT AREA */}
+   {/* INPUT AREA */}
+      <View 
+        className="px-4 py-3 border-t border-slate-200 dark:border-slate-800"
+        style={{ paddingBottom: insets.bottom > 0 ? insets.bottom : 16 }}
+      >
+        <View className="flex-row items-end bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-3xl px-4 py-2">
+          
           <TextInput
             value={inputText}
             onChangeText={setInputText}
             placeholder="Tanyakan sesuatu..."
-            placeholderTextColor="#93c5fd"
-            className="flex-1 text-white text-base"
+            placeholderTextColor={isDark ? "#64748b" : "#94a3b8"}
+            className="flex-1 text-slate-900 dark:text-white text-base max-h-32 pt-2 pb-2"
             multiline
             maxLength={500}
             editable={!loading}
           />
-          <TouchableOpacity
-            onPress={handleSendMessage}
-            disabled={loading || !inputText.trim()}
-            className={`ml-2 p-2 rounded-full ${
-              loading || !inputText.trim()
-                ? 'bg-slate-600'
-                : 'bg-gradient-to-r from-blue-600 to-purple-600'
-            }`}
-          >
-            {loading ? (
-              <ActivityIndicator size="small" color="#ffffff" />
-            ) : (
-              <Ionicons
-                name="send"
-                size={20}
-                color={loading || !inputText.trim() ? '#9ca3af' : '#ffffff'}
-              />
-            )}
-          </TouchableOpacity>
+          
+          {/* TOMBOL SEND DENGAN STYLE MURNI */}
+          <View className="ml-3 mb-1">
+            <TouchableOpacity
+              onPress={handleSendMessage}
+              disabled={loading || !inputText.trim()}
+              style={{
+                backgroundColor: (loading || !inputText.trim()) 
+                  ? (isDark ? '#1e293b' : '#cbd5e1') 
+                  : '#2563eb',
+                padding: 10,
+                borderRadius: 999,
+                alignItems: 'center',
+                justifyContent: 'center',
+                shadowColor: '#3b82f6',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: (loading || !inputText.trim()) ? 0 : 0.3,
+                shadowRadius: 3,
+                elevation: (loading || !inputText.trim()) ? 0 : 3,
+              }}
+            >
+              {loading ? (
+                <ActivityIndicator size="small" color="#ffffff" />
+              ) : (
+                <Ionicons
+                  name="send"
+                  size={18}
+                  color={(loading || !inputText.trim()) ? (isDark ? '#475569' : '#94a3b8') : '#ffffff'}
+                  style={{ marginLeft: 2 }} 
+                />
+              )}
+            </TouchableOpacity>
+          </View>
+
         </View>
-        <Text className="text-blue-300 text-xs text-center mt-2">
-          Tiara AI v1.0 - Server Knowledge Assistant
-        </Text>
       </View>
     </KeyboardAvoidingView>
   );
